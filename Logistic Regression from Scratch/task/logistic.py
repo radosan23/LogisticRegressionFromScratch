@@ -29,11 +29,20 @@ class CustomLogisticRegression:
                 grad = (pred - y[i]) * pred * (1 - pred) * row
                 self.coef_ -= self.l_rate * grad
 
+    def fit_log_loss(self, X, y):
+        if self.fit_intercept:
+            X = np.hstack((np.ones((X.shape[0], 1)), X))
+        self.coef_ = np.zeros(X.shape[1])
+        for _ in range(self.n_epoch):
+            for i, row in enumerate(X):
+                pred = self.predict_proba(row, self.coef_)
+                grad = (pred - y[i]) / X.shape[0] * row
+                self.coef_ -= self.l_rate * grad
+
     def predict(self, X, cut_off=0.5):
         if self.fit_intercept:
             X = np.hstack((np.ones((X.shape[0], 1)), X))
         prediction = self.predict_proba(X, self.coef_)
-        print(prediction)
         prediction = (prediction >= cut_off).astype(int)
         return prediction
 
@@ -49,11 +58,11 @@ def main():
     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=43)
 
     model = CustomLogisticRegression(fit_intercept=True, l_rate=0.01, n_epoch=1000)
-    model.fit_mse(X_train, y_train)
+    model.fit_log_loss(X_train, y_train)
     prediction = model.predict(X_test)
     accuracy = accuracy_score(y_test, prediction)
     info = {'coef_': model.coef_.tolist(), 'accuracy': accuracy}
-    print(info, '\n', prediction)
+    print(info)
 
 
 if __name__ == '__main__':
