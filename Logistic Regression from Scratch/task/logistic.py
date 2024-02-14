@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.datasets import load_breast_cancer
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
@@ -23,21 +24,27 @@ class CustomLogisticRegression:
         if self.fit_intercept:
             X = np.hstack((np.ones((X.shape[0], 1)), X))
         self.coef_ = np.zeros(X.shape[1])
-        for _ in range(self.n_epoch):
+        errors = [[] for _ in range(self.n_epoch)]
+        for epoch in range(self.n_epoch):
             for i, row in enumerate(X):
                 pred = self.predict_proba(row, self.coef_)
                 grad = (pred - y[i]) * pred * (1 - pred) * row
                 self.coef_ -= self.l_rate * grad
+                errors[epoch].append((pred - y[i]) ** 2)
+        return errors
 
     def fit_log_loss(self, X, y):
         if self.fit_intercept:
             X = np.hstack((np.ones((X.shape[0], 1)), X))
         self.coef_ = np.zeros(X.shape[1])
-        for _ in range(self.n_epoch):
+        errors = [[] for _ in range(self.n_epoch)]
+        for epoch in range(self.n_epoch):
             for i, row in enumerate(X):
                 pred = self.predict_proba(row, self.coef_)
                 grad = (pred - y[i]) / X.shape[0] * row
                 self.coef_ -= self.l_rate * grad
+                errors[epoch].append(-y[i] * np.log(pred) - (1 - y[i]) * np.log(1 - pred))
+        return errors
 
     def predict(self, X, cut_off=0.5):
         if self.fit_intercept:
@@ -56,12 +63,21 @@ def main():
     X, y = load_breast_cancer(return_X_y=True, as_frame=True)
     X, y = z_standard(X[['worst concave points', 'worst perimeter', 'worst radius']].values), y.values
     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=43)
-
+    # initialize models
     model = CustomLogisticRegression(fit_intercept=True, l_rate=0.01, n_epoch=1000)
-    model.fit_log_loss(X_train, y_train)
-    prediction = model.predict(X_test)
-    accuracy = accuracy_score(y_test, prediction)
-    info = {'coef_': model.coef_.tolist(), 'accuracy': accuracy}
+    model_skl = LogisticRegression(fit_intercept=True, )
+    # mse metrics
+    err_mse = model.fit_mse(X_train, y_train)
+    acc_mse = accuracy_score(y_test, model.predict(X_test))
+    # log-loss metrics
+    err_log = model.fit_log_loss(X_train, y_train)
+    acc_log = accuracy_score(y_test, model.predict(X_test))
+    # sklearn metrics
+    model_skl.fit(X_train, y_train)
+    acc_skl = accuracy_score(y_test, model_skl.predict(X_test))
+    info = {'mse_accuracy': acc_mse, 'logloss_accuracy': acc_log, 'sklearn_accuracy': acc_skl,
+            'mse_error_first': err_mse[0], 'mse_error_last': err_mse[-1],
+            'logloss_error_first': err_log[0], 'logloss_error_last': err_log[-1]}
     print(info)
 
 
